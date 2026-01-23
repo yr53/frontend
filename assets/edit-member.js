@@ -3,10 +3,14 @@ const API_BASE2 = "http://localhost:8081";
 
 // ✅ (1) 내 정보 조회 API: 너 프로젝트에 맞게 여기만 바꾸면 됨
 // 후보: /api/member/me  OR  /api/auth/check-session  OR  /api/member/myProfile
-// const PROFILE_URL = `${API_BASE2}/api/member/me`;
+const PROFILE_URL = `${API_BASE2}/api/member/me`;
 
 // ✅ (2) 회원 수정 API: 네가 이미 쓰는 엔드포인트
 const UPDATE_URL = `${API_BASE2}/api/member/editMember`;
+
+// ✅ (3) 로그아웃 API (세션 invalidate)
+const LOGOUT_URL = `http://localhost:8080/api/auth/logout`;
+
 
 document.addEventListener("DOMContentLoaded", () => {
   loadMyProfile();
@@ -127,15 +131,19 @@ window.submitUpdate = async function submitUpdate() {
       return;
     }
 
-    setMsg(body?.message ?? "회원 수정이 완료되었습니다!", true);
+  // 1) 수정 성공 → 바로 로그아웃 호출
+await fetch(LOGOUT_URL, {
+  method: "POST",
+  credentials: "include",
+}).catch(() => {}); // 로그아웃 실패해도 UX는 진행
 
-    // 수정 후 화면 갱신(서버가 data를 안 내려줘도 최신 값 반영)
-    await loadMyProfile();
+// 2) 문구 표시(페이지 내) + 팝업
+setMsg("회원정보가 수정되어 로그아웃되었습니다.", true);
+alert("회원정보가 수정되어 로그아웃되었습니다.");
 
-    // 비번 입력칸 초기화
-    document.getElementById("newPw").value = "";
-    document.getElementById("newConfirm").value = "";
-    window.pwCheck();
+// 3) 선택: 로그인 페이지로 이동(원하면 경로만 맞추기)
+location.href = "/auth/login.html";
+
   } catch (e) {
     console.error(e);
     setMsg("요청 중 오류");
