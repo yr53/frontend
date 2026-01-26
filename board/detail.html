@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CoreON - 게시글 상세</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans KR",sans-serif;margin:0;background:#f5f7fb;color:#1f2937;}
+    .wrap{max-width:960px;margin:24px auto;padding:0 16px;}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 8px 24px rgba(17,24,39,.06);padding:18px;}
+    .top{display:flex;gap:12px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;}
+    h1{font-size:22px;margin:0 0 6px;}
+    .meta{color:#6b7280;font-size:13px;display:flex;gap:10px;flex-wrap:wrap;}
+    .content{margin-top:16px;line-height:1.75;white-space:pre-wrap;}
+    .btns{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+    button,.btn{border:1px solid #e5e7eb;background:#fff;border-radius:10px;padding:10px 12px;cursor:pointer;font-weight:600;}
+    button.primary{background:#1f4bd8;border-color:#1f4bd8;color:#fff;}
+    button.danger{background:#fff;border-color:#ef4444;color:#ef4444;}
+    button:disabled{opacity:.5;cursor:not-allowed;}
+    a.btn{display:inline-block;text-decoration:none;}
+    .hr{height:1px;background:#e5e7eb;margin:16px 0;}
+    .attachments a{display:block;padding:8px 0;color:#1f4bd8;text-decoration:none;}
+    .attachments a:hover{text-decoration:underline;}
+    .toast{margin-top:12px;color:#b45309;font-size:13px;}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="top">
+      <div>
+        <h1 id="title">로딩 중...</h1>
+        <div class="meta">
+          <span id="category"></span>
+          <span id="dept"></span>
+          <span id="author"></span>
+          <span id="createdAt"></span>
+          <span id="viewCount"></span>
+        </div>
+      </div>
+
+      <div class="btns">
+        <a class="btn" href="/board/list.html">목록</a>
+        <button id="editBtn" class="primary">수정</button>
+        <button id="deleteBtn" class="danger">삭제</button>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
+    <div id="content" class="content"></div>
+
+    <div class="hr"></div>
+
+    <div class="attachments">
+      <strong>첨부파일</strong>
+      <div id="attachList" style="margin-top:8px;color:#6b7280;font-size:13px;">없음</div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+  </div>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  function qs(name){
+    return new URLSearchParams(location.search).get(name);
+  }
+
+  function fmtDate(v){
+    if(!v) return "";
+    // 백엔드가 "2026-01-24T..." 형식이면 Date로 파싱 가능
+    const d = new Date(v);
+    if (isNaN(d.getTime())) return String(v);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    const hh = String(d.getHours()).padStart(2,'0');
+    const mi = String(d.getMinutes()).padStart(2,'0');
+    return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+  }
+
+  async function fetchJson(url, options={}){
+    const res = await fetch(url, { credentials: "include", ...options });
+    const text = await res.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch(e) {}
+    return { res, data, text };
+  }
+
+  const boardId = qs("boardId");
+  if(!boardId){
+    alert("boardId가 없습니다. 목록으로 이동합니다.");
+    location.href = "/board/list.html";
+  }
+
+  let post = null;
+
+  async function loadDetail(){
+    $("toast").textContent = "";
+    const {res, data, text} = await fetchJson(`/api/board/posts/${boardId}`);
+    if(!res.ok){
+      alert(text || "상세 조회 실패");
+      location.href = "/board/list.html";
+      return;
+    }
+
+    // data는 BoardPost 또는 (가능하면) {post, attachments, canEdit, canDelete} 형태일 수 있음
+    // 우선 둘 다 대응
+    if (data && data.post) {
+      post = data.post;
+      renderAttachments(data.attachments || []);
+      applyPermission(data.canEdit, data.canDelete);
+    } else {
+      post = data;
+      // 첨부는 별도 API가 없으면 그냥 표시 못함
+      renderAttachments([]);
+      // 권한 정보가 응답에 없으면 일단 버튼은 보여주되, 삭제는 백엔드가 막아줌(403)
+      applyPermission(null, null);
+      $("toast").textContent = "※ 권한 정보(canEdit/canDelete)가 응답에 없으면 버튼은 표시되며, 실제 권한은 서버에서 최종 검증됩니다.";
+    }
+
+    $("title").textContent = post.title || "";
+    $("category").textContent = post.category ? `분류: ${post.category}` : "";
+    $("dept").textContent = post.dept ? `부서: ${post.dept}` : "";
+    $("author").textContent = post.authorName ? `작성자: ${post.authorName} (${post.authorEmployeeNo})` : "";
+    $("createdAt").textContent = post.createdAt ? `작성일: ${fmtDate(post.createdAt)}` : "";
+    $("viewCount").textContent = (post.viewCount !== undefined && post.viewCount !== null) ? `조회수: ${post.viewCount}` : "";
+    $("content").textContent = post.content || "";
+  }
+
+  function renderAttachments(list){
+    const box = $("attachList");
+    if(!list || list.length === 0){
+      box.textContent = "없음";
+      return;
+    }
+    box.innerHTML = "";
+    list.forEach(att=>{
+      const a = document.createElement("a");
+      a.href = att.storedUrl || "#";
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.textContent = att.originalName || att.storedUrl;
+      box.appendChild(a);
+    });
+  }
+
+  function applyPermission(canEdit, canDelete){
+    // canEdit/canDelete가 boolean이면 그에 따라 숨김
+    if (typeof canEdit === "boolean") $("editBtn").style.display = canEdit ? "inline-block" : "none";
+    if (typeof canDelete === "boolean") $("deleteBtn").style.display = canDelete ? "inline-block" : "none";
+  }
+
+  $("editBtn").addEventListener("click", ()=>{
+    location.href = `/board/edit.html?boardId=${boardId}`;
+  });
+
+  $("deleteBtn").addEventListener("click", async ()=>{
+    if(!confirm("정말 삭제하시겠습니까?")) return;
+
+    const {res, text} = await fetchJson(`/api/board/posts/${boardId}`, { method: "DELETE" });
+    if(res.status === 204){
+      alert("삭제되었습니다.");
+      location.href = "/board/list.html";
+      return;
+    }
+
+    if(res.status === 401){
+      alert("로그인이 필요합니다.");
+      return;
+    }
+    if(res.status === 403){
+      alert("삭제 권한이 없습니다.");
+      return;
+    }
+    alert(text || `삭제 실패: ${res.status}`);
+  });
+
+  loadDetail();
+</script>
+</body>
+</html>

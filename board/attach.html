@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>CoreON - 자료 등록</title>
+  <style>
+    /* ====== CoreON Base (list.html과 동일 톤) ====== */
+    :root{
+      --bg:#f5f7fb;
+      --surface:#ffffff;
+      --text:#1f2937;
+      --muted:#6b7280;
+      --line:#e5e7eb;
+      --primary:#1f4bd8;
+      --primary-hover:#193db0;
+      --shadow:0 8px 24px rgba(17,24,39,.08);
+      --radius:14px;
+
+      --danger:#b91c1c;
+      --success:#166534;
+    }
+    *{box-sizing:border-box;}
+    body{
+      margin:0; padding:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",Arial,sans-serif;
+    }
+    a{color:inherit;text-decoration:none;}
+
+    /* ===== Header ===== */
+    header{background:var(--surface); border-bottom:1px solid var(--line);}
+    .main_div_header{
+      max-width:1100px; margin:0 auto;
+      padding:24px 20px 14px;
+      text-align:center;
+    }
+    .main_div_header h1{margin:0; font-size:28px; letter-spacing:-.2px;}
+    .main_div_header h3{margin:8px 0 0; font-size:14px; color:var(--muted); font-weight:500;}
+
+    .logo-link{ text-decoration:none; color:inherit; }
+    .logo-link:hover{ color:inherit; }
+
+    .top-nav{
+      display:flex; justify-content:center; align-items:center;
+      gap:26px; margin-top:18px; padding:10px 0 6px;
+      flex-wrap:wrap;
+    }
+    .nav-item{
+      font-size:14px; font-weight:600;
+      padding:8px 6px; border-bottom:2px solid transparent;
+      color:var(--text);
+    }
+    .nav-item:hover{color:var(--primary); border-bottom-color:var(--primary);}
+    .nav-item.active{color:var(--primary); border-bottom-color:var(--primary);}
+    .nav-item.action{
+      padding:8px 12px; border:1px solid var(--line); border-radius:10px;
+      background:#fff; font-weight:700;
+    }
+    .nav-item.action.primary{background:var(--primary); border-color:var(--primary); color:#fff;}
+    .nav-item.action.primary:hover{background:var(--primary-hover); border-color:var(--primary-hover);}
+
+    /* ===== Main ===== */
+    main{max-width:1100px; margin:0 auto; padding:28px 20px 0;}
+    .page-head{
+      display:flex; justify-content:space-between; align-items:flex-end;
+      gap:12px; flex-wrap:wrap;
+      margin: 6px 0 16px;
+    }
+    .page-title h2{margin:0; font-size:18px; font-weight:800;}
+    .page-title p{margin:6px 0 0; font-size:13px; color:var(--muted); line-height:1.6;}
+
+    .card{
+      background:var(--surface);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .card-head{
+      padding:14px 16px;
+      border-bottom:1px solid var(--line);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+    }
+    .card-head .title{
+      margin:0;
+      font-size:14px;
+      font-weight:900;
+    }
+    .card-head .desc{
+      margin:4px 0 0;
+      font-size:12px;
+      color:var(--muted);
+    }
+    .card-body{padding:16px;}
+
+    /* ===== Form ===== */
+    .form-grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:14px;
+    }
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .field.full{grid-column: 1 / -1;}
+    label{
+      font-size:13px;
+      font-weight:900;
+    }
+    .required{
+      color:var(--danger);
+      font-weight:900;
+      margin-left:6px;
+      font-size:12px;
+    }
+    .input, .select, .textarea{
+      padding:11px 12px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      outline:none;
+      background:#fff;
+      font-size:14px;
+      color:var(--text);
+    }
+    .textarea{
+      min-height: 220px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+    .input:focus, .select:focus, .textarea:focus{
+      border-color: rgba(31,75,216,0.45);
+      box-shadow: 0 0 0 4px rgba(31,75,216,0.10);
+    }
+    .help{
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.5;
+    }
+    .error{
+      font-size:12px;
+      color:var(--danger);
+      font-weight:800;
+      display:none;
+    }
+
+    /* ===== Buttons ===== */
+    .btn{
+      border:1px solid var(--line);
+      background:#fff;
+      padding:11px 14px;
+      border-radius:12px;
+      font-weight:900;
+      cursor:pointer;
+      font-size:14px;
+      white-space:nowrap;
+    }
+    .btn.primary{
+      background:var(--primary);
+      border-color:var(--primary);
+      color:#fff;
+    }
+    .btn.primary:hover{
+      background:var(--primary-hover);
+      border-color:var(--primary-hover);
+      box-shadow:0 6px 16px rgba(31,75,216,0.18);
+    }
+    .btn.ghost{
+      background:#fff;
+      border-color: rgba(31,75,216,0.25);
+      color: var(--primary);
+    }
+    .btn.ghost:hover{
+      border-color: rgba(31,75,216,0.45);
+      box-shadow:0 6px 16px rgba(31,75,216,0.10);
+    }
+    .actions{
+      display:flex;
+      justify-content:flex-end;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:14px;
+    }
+
+    /* ===== Footer ===== */
+    footer{
+      margin-top:80px;
+      text-align:center;
+      padding:20px 0;
+      border-top:1px solid var(--line);
+      color:var(--muted);
+      font-size:13px;
+      background:var(--surface);
+    }
+
+    @media (max-width: 900px){
+      .form-grid{grid-template-columns: 1fr;}
+    }
+  </style>
+</head>
+
+<body>
+<header>
+  <div class="main_div_header">
+    <h1><a class="logo-link" href="/index.html">CoreON</a></h1>
+    <h3>일의 중심이 되는 곳</h3>
+
+    <nav class="top-nav">
+      <a href="/board/list.html" class="nav-item active">게시판</a>
+      <a href="/board/notice.html" class="nav-item">공지</a>
+      <a href="/faq/faq.html" class="nav-item">FAQ</a>
+      <a href="/auth/login.html" class="nav-item action">로그인</a>
+      <a href="/auth/regist.html" class="nav-item action primary">회원가입</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="page-head">
+    <div class="page-title">
+      <h2>자료 등록</h2>
+      <p>사내 공문/양식/공유 자료를 등록합니다. 제목과 분류는 필수입니다.</p>
+    </div>
+  </div>
+
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <p class="title">게시글 작성</p>
+        <p class="desc">등록 후 목록에서 문서 요약 기능(Bedrock)을 사용할 수 있도록 확장 예정입니다.</p>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <form id="attachForm" onsubmit="return false;">
+        <div class="form-grid">
+          <!-- 제목 (필수) -->
+          <div class="field full">
+            <label for="title">제목<span class="required">*</span></label>
+            <input id="title" name="title" class="input" type="text" placeholder="예) 2026년 보안 교육 안내 공문" />
+            <div class="error" id="titleError">제목은 필수 입력입니다.</div>
+          </div>
+
+          <!-- 분류 (필수) -->
+          <div class="field">
+            <label for="category">분류<span class="required">*</span></label>
+            <select id="category" name="category" class="select">
+              <option value="">선택</option>
+              <option value="공지성">공문성</option>
+              <option value="공문/양식">공문/양식</option>
+              <option value="공유자료">공유자료</option>
+            </select>
+            <div class="error" id="categoryError">분류는 필수 선택입니다.</div>
+          </div>
+
+          <!-- 부서 (선택) -->
+          <div class="field">
+            <label for="dept">부서</label>
+            <input id="dept" name="dept" class="input" type="text" placeholder="예) IT 운영팀" />
+            <div class="help">선택 입력 (추후 로그인 사용자 부서 자동 세팅 가능)</div>
+          </div>
+
+          <!-- 본문 -->
+          <div class="field full">
+            <label for="content">내용</label>
+            <textarea id="content" name="content" class="textarea" placeholder="문서 요약이 가능하도록 핵심 내용과 배경을 간단히 작성해 주세요."></textarea>
+            <div class="help">등록 후 Bedrock 요약 기능에서 본문/첨부 파일 내용을 요약할 수 있도록 확장할 수 있습니다.</div>
+          </div>
+
+          <!-- 파일 업로드 -->
+          <div class="field full">
+            <label for="files">첨부파일</label>
+            <input id="files" name="files" class="input" type="file" multiple />
+            <div class="help">PDF/DOCX/XLSX 등 사내 공유 문서를 첨부하세요. (현재는 UI만 제공)</div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn" type="button" onclick="location.href='/board/list.html'">취소</button>
+          <button class="btn ghost" type="button" onclick="saveDraft()">임시저장(로컬)</button>
+          <button class="btn primary" type="button" onclick="submitPost()">등록</button>
+        </div>
+      </form>
+    </div>
+  </section>
+</main>
+
+<footer>
+  Copyright CoreON
+</footer>
+
+<script>
+  // ===== 간단 유효성 검사 =====
+  function validate(){
+    const title = document.getElementById("title").value.trim();
+    const category = document.getElementById("category").value;
+
+    const titleError = document.getElementById("titleError");
+    const categoryError = document.getElementById("categoryError");
+
+    let ok = true;
+
+    if(!title){
+      titleError.style.display = "block";
+      ok = false;
+    }else{
+      titleError.style.display = "none";
+    }
+
+    if(!category){
+      categoryError.style.display = "block";
+      ok = false;
+    }else{
+      categoryError.style.display = "none";
+    }
+
+    return ok;
+  }
+
+  // ===== 임시저장(로컬) =====
+  function saveDraft(){
+    const draft = {
+      title: document.getElementById("title").value,
+      category: document.getElementById("category").value,
+      dept: document.getElementById("dept").value,
+      content: document.getElementById("content").value
+    };
+    localStorage.setItem("board_attach_draft", JSON.stringify(draft));
+    alert("임시저장 완료(브라우저 로컬).");
+  }
+
+  // ===== 로드 시 임시저장 복원 =====
+  window.addEventListener("load", () => {
+    const raw = localStorage.getItem("board_attach_draft");
+    if(!raw) return;
+    try{
+      const d = JSON.parse(raw);
+      if(d?.title) document.getElementById("title").value = d.title;
+      if(d?.category) document.getElementById("category").value = d.category;
+      if(d?.dept) document.getElementById("dept").value = d.dept;
+      if(d?.content) document.getElementById("content").value = d.content;
+    }catch(e){}
+  });
+
+  // ===== 등록 (백엔드 붙일 준비: FormData) =====
+  async function submitPost(){
+    if(!validate()) return;
+
+    const form = document.getElementById("attachForm");
+    const fd = new FormData(form);
+
+    // ✅ files input name이 "files"라서 멀티파일도 그대로 들어감
+    // fd.get("title"), fd.get("category") 등 확인 가능
+
+    try{
+      // 🚩 여기 URL은 너 백엔드에 맞게 교체
+      // 예시: /api/board/posts (multipart/form-data)
+      const res = await fetch("/api/board/posts", {
+        method: "POST",
+        body: fd,
+        credentials: "include"
+      });
+
+      // 아직 백엔드가 없으면 이 부분에서 실패할 수 있음
+      if(!res.ok){
+        const t = await res.text().catch(()=> "");
+        alert("등록 실패: " + res.status + (t ? ("\n" + t) : ""));
+        return;
+      }
+
+      alert("등록 완료");
+      // 임시저장 제거(선택)
+      localStorage.removeItem("board_attach_draft");
+      location.href = "/board/list.html";
+    }catch(e){
+      console.error(e);
+      alert("서버 연결 오류가 발생했습니다. (백엔드 연결 전이면 정상)");
+    }
+  }
+</script>
+</body>
+</html>

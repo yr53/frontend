@@ -337,7 +337,7 @@
         <option value="공유자료">공유자료</option>
       </select>
       <input id="search" class="input" type="text" placeholder="제목/부서/작성자 검색" />
-      <button class="btn primary" type="button" onclick="alert('작성/업로드는 추후 백엔드 연결 예정입니다.')">자료 등록</button>
+      <button class="btn primary" type="button" onclick="location.href='/board/attach.html'">자료 등록</button>
     </div>
   </div>
 
@@ -360,6 +360,7 @@
               <th style="width:16%;">분류</th>
               <th style="width:16%;">부서</th>
               <th style="width:12%;">첨부</th>
+              <th style="width:8%;">보기</th>
             </tr>
           </thead>
           <tbody id="boardTable">
@@ -416,162 +417,156 @@
 </footer>
 
 <script>
-  // ===== 데모 게시판 데이터 (나중에 API로 교체) =====
-  const docs = [
-    {
-      id: 101,
-      title: "2026년 정보보안 교육 이수 안내 공문",
-      type: "공지성",
-      dept: "IT 운영팀",
-      writer: "관리자",
-      date: "2026-01-10",
-      fileName: "security_training_2026.pdf"
-    },
-    {
-      id: 102,
-      title: "출장비 정산 양식(개정 v2)",
-      type: "공문/양식",
-      dept: "총무팀",
-      writer: "김OO",
-      date: "2026-01-08",
-      fileName: "expense_form_v2.docx"
-    },
-    {
-      id: 103,
-      title: "신규 입사자 온보딩 체크리스트",
-      type: "공유자료",
-      dept: "인사팀",
-      writer: "박OO",
-      date: "2026-01-05",
-      fileName: "onboarding_checklist.pdf"
-    }
-  ];
+  let docs = [];
+  let selectedDoc = null;
 
   const tbody = document.getElementById("boardTable");
   const searchInput = document.getElementById("search");
   const filterSelect = document.getElementById("filter");
 
-  let selectedDoc = null;
+  // 초기 로드
+  (async () => {
+    if (typeof updateNavBySession === "function") updateNavBySession();
+    await loadDocs();
+  })();
 
-  function renderTable(list){
+  async function loadDocs() {
+    try {
+      const res = await fetch("/api/board/posts?page=0&size=50", {
+        credentials: "include"
+      });
+
+      if (res.status === 401) {
+        const next = encodeURIComponent(location.pathname + location.search);
+        location.href = `/auth/login.html?next=${next}`;
+        return;
+      }
+
+      if (!res.ok) throw new Error("HTTP " + res.status);
+
+      const data = await res.json();
+      const rows = Array.isArray(data) ? data : (data.content ?? []);
+
+      docs = rows.map(p => ({
+        id: String(p.boardId ?? p.board_id ?? p.id),
+        title: p.title ?? "-",
+        category: p.category ?? "-",
+        dept: p.dept ?? "-",
+        authorName: p.authorName ?? p.author_name ?? "-",
+        createdAt: p.createdAt ?? p.created_at ?? null
+      }));
+
+      applyFilters();
+    } catch (e) {
+      console.error(e);
+      tbody.innerHTML =
+        `<tr><td colspan="5" style="padding:16px;">데이터 로딩 실패</td></tr>`;
+    }
+  }
+
+  function renderDocs(list) {
     tbody.innerHTML = "";
-    list.forEach((d) => {
+
+    if (!list || list.length === 0) {
+      tbody.innerHTML =
+        `<tr><td colspan="5" style="text-align:center; padding:16px;">게시글이 없습니다.</td></tr>`;
+      return;
+    }
+
+    list.forEach(item => {
       const tr = document.createElement("tr");
       tr.className = "row-link";
-      tr.onclick = () => selectDoc(d.id);
-
-      const tagClass =
-        d.type === "공지성" ? "notice" :
-        d.type === "공문/양식" ? "form" : "share";
 
       tr.innerHTML = `
-        <td>
+        <td class="title">
           <div class="title-cell">
-            <strong>${escapeHtml(d.title)}</strong>
+            <strong>${escapeHtml(item.title)}</strong>
             <div class="submeta">
-              <span>${escapeHtml(d.date)}</span>
-              <span>${escapeHtml(d.writer)}</span>
+              <span>${formatDate(item.createdAt)}</span>
+              <span>${escapeHtml(item.authorName)}</span>
             </div>
           </div>
         </td>
-        <td><span class="tag ${tagClass}">${escapeHtml(d.type)}</span></td>
-        <td>${escapeHtml(d.dept)}</td>
-        <td><span class="file-pill">📎 ${escapeHtml(d.fileName)}</span></td>
+        <td>${escapeHtml(item.category)}</td>
+        <td>${escapeHtml(item.dept)}</td>
+        <td><span class="file-pill">📎 -</span></td>
+        <td>
+          <button class="btn ghost view-btn" data-id="${item.id}">보기</button>
+        </td>
       `;
+
+      // 행 클릭 → 우측 패널만 업데이트
+      tr.addEventListener("click", () => selectDoc(item.id));
+
+      // 보기 버튼 → detail 이동
+      tr.querySelector(".view-btn").addEventListener("click", e => {
+        e.stopPropagation();
+        location.href = `/board/detail.html?boardId=${item.id}`;
+      });
+
       tbody.appendChild(tr);
     });
   }
 
-  function escapeHtml(str){
-    return String(str)
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;")
-      .replaceAll("'","&#039;");
-  }
-
-  function applyFilters(){
-    const q = searchInput.value.trim().toLowerCase();
+  function applyFilters() {
+    const q = (searchInput.value ?? "").toLowerCase();
     const f = filterSelect.value;
 
     const filtered = docs.filter(d => {
-      const matchesText =
-        d.title.toLowerCase().includes(q) ||
-        d.dept.toLowerCase().includes(q) ||
-        d.writer.toLowerCase().includes(q);
+      const matchText =
+        (d.title ?? "").toLowerCase().includes(q) ||
+        (d.dept ?? "").toLowerCase().includes(q) ||
+        (d.authorName ?? "").toLowerCase().includes(q);
 
-      const matchesType = (f === "all") ? true : d.type === f;
-      return matchesText && matchesType;
+      const matchType = (f === "all") || d.category === f;
+      return matchText && matchType;
     });
 
-    renderTable(filtered);
+    renderDocs(filtered);
   }
 
-  function resetFilters(){
+  function resetFilters() {
     searchInput.value = "";
     filterSelect.value = "all";
     applyFilters();
   }
 
-  // ===== 선택 문서 상세 =====
-  function selectDoc(id){
-    selectedDoc = docs.find(d => d.id === id);
+  function selectDoc(id) {
+    selectedDoc = docs.find(d => d.id === String(id));
     if (!selectedDoc) return;
 
-    document.getElementById("dTitle").innerText = selectedDoc.title;
-    document.getElementById("dType").innerText = selectedDoc.type;
-    document.getElementById("dDept").innerText = selectedDoc.dept;
-    document.getElementById("dWriter").innerText = selectedDoc.writer;
-    document.getElementById("dDate").innerText = selectedDoc.date;
+    document.getElementById("dTitle").innerText  = selectedDoc.title ?? "-";
+    document.getElementById("dType").innerText   = selectedDoc.category ?? "-";
+    document.getElementById("dDept").innerText   = selectedDoc.dept ?? "-";
+    document.getElementById("dWriter").innerText = selectedDoc.authorName ?? "-";
+    document.getElementById("dDate").innerText   = formatDate(selectedDoc.createdAt);
 
     document.getElementById("downloadBtn").disabled = false;
-    document.getElementById("previewBtn").disabled = false;
+    document.getElementById("previewBtn").disabled  = false;
     document.getElementById("summarizeBtn").disabled = false;
 
     document.getElementById("summaryText").innerText =
       "요약을 보려면 “요약하기” 버튼을 누르세요.";
   }
 
-  // ===== Bedrock 요약(데모) =====
-  async function summarizeWithBedrock(){
-    if (!selectedDoc) return;
-
-    const summaryEl = document.getElementById("summaryText");
-    summaryEl.innerText = "요약 생성 중... (데모)";
-
-    // ✅ 나중에 실제 연동 시 여기 fetch만 바꾸면 됨
-    // 예: const res = await fetch("/api/bedrock/summarize", { method:"POST", headers:{...}, body: JSON.stringify({ docId: selectedDoc.id }) });
-    // const data = await res.json(); summaryEl.innerText = data.summary;
-
-    setTimeout(() => {
-      summaryEl.innerText =
-`[데모 요약]
-- 문서명: ${selectedDoc.title}
-- 핵심: 사내 공지/양식/자료 공유를 위한 문서입니다.
-- 조치: 구성원은 안내에 따라 필요한 작업을 진행하세요.
-
-(※ 실제 요약은 AWS Bedrock 연동 후 제공됩니다.)`;
-    }, 400);
+  function formatDate(v) {
+    if (!v) return "-";
+    return String(v).replace("T", " ").slice(0, 16);
   }
 
-  // 초기 렌더
-  renderTable(docs);
+  function escapeHtml(str) {
+    return String(str)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
 
-  // 검색/필터 이벤트
+  // 이벤트
   searchInput.addEventListener("input", applyFilters);
   filterSelect.addEventListener("change", applyFilters);
 </script>
-<script>
-  fetch("/main/header.html")
-    .then(res => {
-      if (!res.ok) throw new Error("Failed to load header");
-      return res.text();
-    })
-    .then(html => {
-      document.getElementById("app-header").innerHTML = html;
-    })
-    .catch(err => console.error(err));
-</script>
+
 </body>
 </html>
